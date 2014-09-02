@@ -1,6 +1,6 @@
 #!/bin/bash
 
-statr()
+fstat()
 {
 	if [[ $# == 1 ]]
 	then
@@ -92,4 +92,4 @@ statr()
 	rm -rf $tlist $qty $vqty $fqty $cqty $nqty $lqty 2> /dev/null;
 }
 
-statr $@ 2> /dev/null;
+fstat $@ 2> /dev/null;
