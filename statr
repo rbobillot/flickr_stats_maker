@@ -1,0 +1,95 @@
+#!/bin/bash
+
+statr()
+{
+	if [[ $# == 1 ]]
+	then
+		f_user=$(echo "$1" | tr '/' '\n' | grep -vx '$' | tail -n 1);
+	else
+		printf "\033[91musage\033[0m: statr <user_id | gallery_url>\n";
+		return ;
+	fi
+	f_link="https://www.flickr.com/photos/$f_user/";
+	tmpf="/tmp/.tmpf_pics";
+	tlist="/tmp/.f_pics";
+	qty="/tmp/.qty";
+	vqty="/tmp/.vqty";
+	fqty="/tmp/.fqty";
+	cqty="/tmp/.cqty";
+	lqty="/tmp/.lqty";
+	nqty="/tmp/.nqty";
+
+	rm -rf $tmpf 2> /dev/null
+	rm -rf $tlist 2> /dev/null
+	rm -rf $qty 2> /dev/null
+
+	printf "Getting \033[94mFlick\033[95mr\033[0m datas for \033[96m$f_user\033[0m...\n";
+	for i in {1..1000}
+	do
+		curl -s "$f_link/page$i/" 2> /dev/null | tr ',' '\n' | grep "\"id\":" | grep -v "{\|}" | tr ':' '\n' | grep -v "id" | cut -d '"' -f2 | sort -u > $tmpf;
+		if [[ `cat $tmpf` != "" ]]
+		then
+			cat $tmpf >> $tlist;
+		else
+			break ;
+		fi
+	done
+	rm -rf $tmpf;
+
+	p_num=$(cat $tlist 2> /dev/null | wc -l | awk '{print $1}');
+	if [[ `printf "$p_num" 2> /dev/null` != "0" ]]
+	then
+		printf "\033[92mDone\033[0m -> \033[96m$p_num\033[0m pictures to be analysed\n";
+	else
+		printf "\033[93mError\033[0m\n";
+		rm -rf $tlist 2> /dev/null;
+		return ;
+	fi
+
+	rm -rf $qty 2> /dev/null;
+	for i in `cat $tlist`
+	do
+		curl -s "$f_link/$i/" | tr ',' '\n' | grep -i "title\":\|affichages\|fave_count\|comment_count\|baseurl: " | head -n 5 | sort -r | sed -e "s/\"fave_count\":\|\"comment_count\":\|\"title\":\|\t.baseURL: //g" | cut -c 2- | rev | cut -c 2- | rev | sed -e "s/Affichage\|\t//g" >> $qty & 2> /dev/null
+	done 2> /dev/null
+
+	while [ 1 ]
+	do
+		if [[ $(cat $qty | wc -l | awk '{print $1}') == "0" ]]
+		then
+			printf "\rCollecting datas..."
+		else
+			printf "\r\033[K";
+			echo "$(cat $qty | wc -l | awk '{print $1}') * 100 / 5 / $p_num" | bc | tr '\n' '%';
+		fi
+		if [[ $(echo `ps | grep -wv "ps\|bash\|grep"` | tr ' ' '\n' | grep "sed\|curl" | wc -l | awk '{print $1}') == "0" ]]
+		then
+			break ;
+		fi
+	done 2> /dev/null;
+
+	cat $qty | sed -n '1~5p' > $nqty;
+	cat $qty | sed -n '2~5p' > $fqty;
+	cat $qty | sed -n '3~5p' > $cqty;
+	cat $qty | sed -n '4~5p' > $lqty;
+	cat $qty | sed -n '5~5p' | sed -e "s/ //g" > $vqty;
+	printf "\r\033[K\033[92m100";
+	echo -n "%";
+	printf "\033[0m -> \033[92mPictures analysed !\033[0m\n\n";
+	printf "Total views: \033[96m$(echo `cat $vqty | tr '\n' '+' | rev | cut -c 2- | rev` | bc)\033[0m\nTotal favs:  \033[96m$(echo `cat $fqty | tr '\n' '+' | rev | cut -c 2- | rev` | bc)\033[0m\nTotal coms:  \033[96m$(echo `cat $cqty | tr '\n' '+' | rev | cut -c 2- | rev` | bc)\033[0m\n\n";
+
+	mostv=$(cat $vqty | grep -nx `cat $vqty | sort -hr | head -n 1`);
+	mostvname=$(cat $nqty | head -n `printf $mostv | cut -d ':' -f1` | tail -n 1);
+	mostvlink=$(cat $lqty | head -n `printf $mostv | cut -d ':' -f1` | tail -n 1);
+	mostf=$(cat $fqty | grep -nx `cat $fqty | sort -hr | head -n 1`);
+	mostfname=$(cat $nqty | head -n `printf $mostf | cut -d ':' -f1` | tail -n 1);
+	mostflink=$(cat $lqty | head -n `printf $mostf | cut -d ':' -f1` | tail -n 1);
+	mostc=$(cat $cqty | grep -nx `cat $cqty | sort -hr | head -n 1`);
+	mostcname=$(cat $nqty | head -n `printf $mostc | cut -d ':' -f1` | tail -n 1);
+	mostclink=$(cat $lqty | head -n `printf $mostc | cut -d ':' -f1` | tail -n 1);
+	printf "Most viewed pic: \"\033[93m$mostvname\033[0m\" -> \033[96m`printf $mostv | cut -d ':' -f2`\033[0m views (\033[94m$(curl -s "http://is.gd/api.php?longurl=$mostvlink")\033[0m)\n"
+	printf "Most faved pic:  \"\033[93m$mostfname\033[0m\" -> \033[96m`printf $mostf | cut -d ':' -f2`\033[0m favs (\033[94m$(curl -s "http://is.gd/api.php?longurl=$mostflink")\033[0m)\n"
+	printf "Most commented:  \"\033[93m$mostcname\033[0m\" -> \033[96m`printf $mostc | cut -d ':' -f2`\033[0m coms (\033[94m$(curl -s "http://is.gd/api.php?longurl=$mostclink")\033[0m)\n"
+	rm -rf $tlist $qty $vqty $fqty $cqty $nqty $lqty 2> /dev/null;
+}
+
+statr $@ 2> /dev/null;
