@@ -120,9 +120,9 @@ statr()
 	mostcname=$(cat $nqty | head -n `printf $mostc | cut -d ':' -f1` | tail -n 1);
 	mostclink=$(cat $lqty | head -n `printf $mostc | cut -d ':' -f1` | tail -n 1);
 
-	printf "Most viewed pic: \"\033[93m$mostvname\033[0m\" -> \033[96m`printf $mostv | cut -d ':' -f2`\033[0m views (\033[94m$(curl -s "http://is.gd/api.php?longurl=$mostvlink")\033[0m)\nMost faved pic:  \"\033[93m$mostfname\033[0m\" -> \033[96m`printf $mostf | cut -d ':' -f2`\033[0m favs (\033[94m$(curl -s "http://is.gd/api.php?longurl=$mostflink")\033[0m)\nMost commented:  \"\033[93m$mostcname\033[0m\" -> \033[96m`printf $mostc | cut -d ':' -f2`\033[0m coms (\033[94m$(curl -s "http://is.gd/api.php?longurl=$mostclink")\033[0m)\n" >> $fstat;
+	printf "_@__:MVP:__@_${mostvname}_@__:about:__@_`printf $mostv | cut -d ':' -f2`_@__:views:__@_$(curl -s http://is.gd/api.php?longurl=$mostvlink)_@__:EOL:__@_\n_@__:MFP:__@_${mostfname}_@__:about:__@_`printf $mostf | cut -d ':' -f2`_@__:favs:__@_$(curl -s http://is.gd/api.php?longurl=$mostflink)_@__:EOL:__@_\n_@__:MCP:__@_${mostcname}_@__:about:__@_`printf $mostc | cut -d ':' -f2`_@__:coms:__@_$(curl -s http://is.gd/api.php?longurl=$mostclink)_@__:EOL:__@_\n" >> $fstat;
 
-	cat $fstat;
+	cat $fstat | awk '{gsub("_@__:MVP:__@_","\033[0mMost viewed pic: \"\033[93m")}1' | awk '{gsub("_@__:MFP:__@_", "\033[0mMost faved pic:  \"\033[93m")}1' | awk '{gsub("_@__:MCP:__@_", "\033[0mMost commented:  \"\033[93m")}1' | awk '{gsub("_@__:about:__@_", "\033[0m\" -> \033[96m")}1' | awk '{gsub("_@__:views:__@_", "\033[0m views (\033[94m")}1' | awk '{gsub("_@__:favs:__@_", "\033[0m favs (\033[94m")}1' | awk '{gsub("_@__:coms:__@_", "\033[0m coms (\033[94m")}1' | awk '{gsub("_@__:EOL:__@_", "\033[0m)")}1' ;
 	rm -rf $fstat $pics_dir $pcheck $tmpf $tlist $qty $vqty $fqty $cqty $nqty $lqty 2> /dev/null;
 }
 
