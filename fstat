@@ -107,7 +107,7 @@ statr()
 	cat $qty | sed -n '5~5p' | sed -e "s/ //g" > $vqty;
 	printf "\r\033[K\033[92m100";
 	echo -n "%";
-	printf "\033[0m -> \033[92mPictures analysed !\033[0m\n\n";
+	printf "\033[0m -> \033[92mPictures analyzed !\033[0m\n\n";
 	printf "Total views: \033[96m$(echo `cat $vqty | tr '\n' '+' | rev | cut -c 2- | rev` | bc)\033[0m\nTotal favs:  \033[96m$(echo `cat $fqty | tr '\n' '+' | rev | cut -c 2- | rev` | bc)\033[0m\nTotal coms:  \033[96m$(echo `cat $cqty | tr '\n' '+' | rev | cut -c 2- | rev` | bc)\033[0m\n\n" > $fstat;
 
 	mostv=$(cat $vqty | grep -nx `cat $vqty | sort -hr | head -n 1`);
