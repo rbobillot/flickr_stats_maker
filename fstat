@@ -96,8 +96,8 @@ statr()
 
 	for i in `cat $tlist`
 	do
-		cat "$pics_dir/$i" | sed -e "s/\",\"/\"\n\"/g" | grep -i "title=\"" | head -n 1 | sed -e "s/\|\"\/>$\|\t\t\t\t  title=\"//g" >> $qty 2> /dev/null
-		cat "$pics_dir/$i" | sed -e "s/\",\"/\"\n\"/g" | grep -i "affichages\|fave_count\|comment_count\|baseurl: " | head -n 5 | sort -r | sed -e "s/\"fave_count\":\|\"comment_count\":\|\t.baseURL: //g" | cut -c 2- | rev | cut -c 2- | rev | sed -e "s/Affichage\|\t//g" | sed -e "s/.jpg'/.jpg/g" >> $qty 2> /dev/null
+		cat "$pics_dir/$i" | grep -i "title=\"" | head -n 1 | sed -e "s/\|\"\/>$\|\t\t\t\t  title=\"//g" >> $qty 2> /dev/null
+		cat "$pics_dir/$i" | tr ',' '\n' | grep -i "affichages\|fave_count\|comment_count\|baseurl: " | head -n 5 | sort -r | sed -e "s/\"fave_count\":\|\"comment_count\":\|\t.baseURL: //g" | cut -c 2- | rev | cut -c 2- | rev | sed -e "s/Affichage\|\t//g" | sed -e "s/.jpg'/.jpg/g" >> $qty 2> /dev/null
 	done 2> /dev/null
 
 	cat $qty | sed -n '1~5p' > $nqty;
