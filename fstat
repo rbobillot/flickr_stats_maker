@@ -1,7 +1,19 @@
 #!/bin/bash
 
-fstat()
+statr()
 {
+	if [[ `ifconfig | grep "inet " | grep -v "127.0.0.1"` == "" ]]
+	then
+		printf "\033[91mError\033[0m: No internet connection...\n";
+		return ;
+	fi
+
+	if [[ `ps ax | grep "curl" | grep "flickr" | grep -v grep` != "" ]]
+	then
+		printf "\033[91mError\033[0m: this process is already running...\n";
+		return ;
+	fi
+
 	if [[ $# == 1 ]]
 	then
 		f_user=$(echo "$1" | tr '/' '\n' | grep -vx '$' | tail -n 1);
@@ -9,24 +21,35 @@ fstat()
 		printf "\033[91musage\033[0m: statr <user_id | gallery_url>\n";
 		return ;
 	fi
-	f_link="https://www.flickr.com/photos/$f_user/";
-	tmpf="/tmp/.tmpf_pics";
-	tlist="/tmp/.f_pics";
-	qty="/tmp/.qty";
-	vqty="/tmp/.vqty";
-	fqty="/tmp/.fqty";
-	cqty="/tmp/.cqty";
-	lqty="/tmp/.lqty";
-	nqty="/tmp/.nqty";
 
-	rm -rf $tmpf 2> /dev/null
-	rm -rf $tlist 2> /dev/null
-	rm -rf $qty 2> /dev/null
+	f_link="https://www.flickr.com/photos/$f_user/";
+	pcheck="/tmp/.pcheck_$f_user";
+	tmpf="/tmp/.tmpf_pics_$f_user";
+	tlist="/tmp/.f_pics_$f_user";
+	qty="/tmp/.qty_$f_user";
+	vqty="/tmp/.vqty_$f_user";
+	fqty="/tmp/.fqty_$f_user";
+	cqty="/tmp/.cqty_$f_user";
+	lqty="/tmp/.lqty_$f_user";
+	nqty="/tmp/.nqty_$f_user";
+	rm -rf $pcheck $tmpf $tlist $qty $vqty $fqty $cqty $nqty $lqty 2> /dev/null;
 
 	printf "Getting \033[94mFlick\033[95mr\033[0m datas for \033[96m$f_user\033[0m...\n";
+
 	for i in {1..1000}
 	do
-		curl -s "$f_link/page$i/" 2> /dev/null | tr ',' '\n' | grep "\"id\":" | grep -v "{\|}" | tr ':' '\n' | grep -v "id" | cut -d '"' -f2 | sort -u > $tmpf;
+		curl -0s "$f_link/page$i/" > $pcheck;
+		if [[ `echo "$i"` == "1" ]]
+		then
+			totnum=$(cat $pcheck | tr ',' '\n' | tr '}' '\n' | grep "public_photos_count" | cut -d ':' -f2 | cut -d '"' -f2);
+			if [[ $totnum -gt "1000" ]]
+			then
+				printf "\033[91mError\033[0m: More than 1000 pics to analyse (\033[96m$totnum\033[0m)...\n";
+				rm -rf $tlist $pcheck 2> /dev/null;
+				return ;
+			fi
+		fi
+		cat $pcheck | tr ',' '\n' | grep "\"id\":" | grep -v "{\|}" | tr ':' '\n' | grep -v "id" | cut -d '"' -f2 | sort -u > $tmpf;
 		if [[ `cat $tmpf` != "" ]]
 		then
 			cat $tmpf >> $tlist;
@@ -34,14 +57,23 @@ fstat()
 			break ;
 		fi
 	done
-	rm -rf $tmpf;
+	rm -rf $tmpf $pcheck;
 
 	p_num=$(cat $tlist 2> /dev/null | wc -l | awk '{print $1}');
 	if [[ `printf "$p_num" 2> /dev/null` != "0" ]]
 	then
 		printf "\033[92mDone\033[0m -> \033[96m$p_num\033[0m pictures to be analysed\n";
 	else
-		printf "\033[93mError\033[0m\n";
+		http_ret=$(curl -sI "$f_link" | head -n 1 | tr ' ' '\n' | tail -n +2 | head -n 1);
+		if [[ $http_ret == "404" ]]
+		then
+			printf "\033[91mError\033[0m: This is not the user you're looking for...\n";
+		elif [[ $http_ret == "200" ]]
+		then
+			printf "\033[91mError\033[0m: You have no power here ! (Private Datas)...\n";
+		else
+			printf "\033[91mUnknown Error\033[0m: Request failed for some reason...\n";
+		fi
 		rm -rf $tlist 2> /dev/null;
 		return ;
 	fi
@@ -49,7 +81,7 @@ fstat()
 	rm -rf $qty 2> /dev/null;
 	for i in `cat $tlist`
 	do
-		curl -s "$f_link/$i/" | tr ',' '\n' | grep -i "title\":\|affichages\|fave_count\|comment_count\|baseurl: " | head -n 5 | sort -r | sed -e "s/\"fave_count\":\|\"comment_count\":\|\"title\":\|\t.baseURL: //g" | cut -c 2- | rev | cut -c 2- | rev | sed -e "s/Affichage\|\t//g" >> $qty & 2> /dev/null
+		curl -0s "$f_link/$i/" | tr ',' '\n' | grep -i "title\":\|affichages\|fave_count\|comment_count\|baseurl: " | head -n 5 | sort -r | sed -e "s/\"fave_count\":\|\"comment_count\":\|\"title\":\|\t.baseURL: //g" | cut -c 2- | rev | cut -c 2- | rev | sed -e "s/Affichage\|\t//g" >> $qty & 2> /dev/null
 	done 2> /dev/null
 
 	while [ 1 ]
@@ -89,7 +121,7 @@ fstat()
 	printf "Most viewed pic: \"\033[93m$mostvname\033[0m\" -> \033[96m`printf $mostv | cut -d ':' -f2`\033[0m views (\033[94m$(curl -s "http://is.gd/api.php?longurl=$mostvlink")\033[0m)\n"
 	printf "Most faved pic:  \"\033[93m$mostfname\033[0m\" -> \033[96m`printf $mostf | cut -d ':' -f2`\033[0m favs (\033[94m$(curl -s "http://is.gd/api.php?longurl=$mostflink")\033[0m)\n"
 	printf "Most commented:  \"\033[93m$mostcname\033[0m\" -> \033[96m`printf $mostc | cut -d ':' -f2`\033[0m coms (\033[94m$(curl -s "http://is.gd/api.php?longurl=$mostclink")\033[0m)\n"
-	rm -rf $tlist $qty $vqty $fqty $cqty $nqty $lqty 2> /dev/null;
+	rm -rf $pcheck $tmpf $tlist $qty $vqty $fqty $cqty $nqty $lqty 2> /dev/null;
 }
 
-fstat $@ 2> /dev/null;
+statr $@ 2> /dev/null;
