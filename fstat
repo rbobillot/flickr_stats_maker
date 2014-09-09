@@ -31,12 +31,13 @@ statr()
 	fqty="/tmp/.fqty_$f_user";
 	cqty="/tmp/.cqty_$f_user";
 	lqty="/tmp/.lqty_$f_user";
+	pcln="/tmp/.pcln_$f_user";
 	nqty="/tmp/.nqty_$f_user";
 	pics_dir="/tmp/.pics_dir_$f_user";
 	fstat="/tmp/.final_stats_$f_user";
 	rm -rf $pcheck $tmpf $tlist $qty $vqty $fqty $cqty $nqty $lqty 2> /dev/null;
 
-	printf "Getting \033[94mFlick\033[95mr\033[0m datas for \033[96m$f_user\033[0m...\n";
+	printf "Getting \033[1;94mFlick\033[1;95mr\033[0m datas for \033[96m$f_user\033[0m...\n";
 
 	for i in {1..1000}
 	do
@@ -44,6 +45,15 @@ statr()
 		if [[ `echo "$i"` == "1" ]]
 		then
 			totnum=$(cat $pcheck | tr ',' '\n' | tr '}' '\n' | grep "public_photos_count" | cut -d ':' -f2 | cut -d '"' -f2);
+			idpic=$(cat $pcheck | grep "avatar-mask" | tr ' ' '\n' | tail -n 1 | cut -d '"' -f2);
+			idnam=$(cat $pcheck | tr ',' '\n' | grep "og:title" | tr '=' '\n' | tail -n 1 | cut -d '"' -f2);
+			account=$(cat $pcheck | tr ',' '\n' | grep "is_pro" | tr '}' ':' | cut -d ':' -f2);
+			if [[ $account == "0" ]]
+			then
+				ispro="Free";
+			else
+				ispro="Pro";
+			fi
 		fi
 		cat $pcheck | tr ',' '\n' | grep "\"id\":" | grep -v "{\|}" | tr ':' '\n' | grep -v "id" | cut -d '"' -f2 | sort -u > $tmpf;
 		if [[ `cat $tmpf` != "" ]]
@@ -96,33 +106,55 @@ statr()
 
 	for i in `cat $tlist`
 	do
+		echo "$f_link/$i" >> $qty 2> /dev/null;
 		cat "$pics_dir/$i" | grep -i "title=\"" | head -n 1 | sed -e "s/\|\"\/>$\|\t\t\t\t  title=\"//g" >> $qty 2> /dev/null
-		cat "$pics_dir/$i" | tr ',' '\n' | grep -i "affichages\|fave_count\|comment_count\|baseurl: " | head -n 5 | sort -r | sed -e "s/\"fave_count\":\|\"comment_count\":\|\t.baseURL: //g" | cut -c 2- | rev | cut -c 2- | rev | sed -e "s/Affichage\|\t//g" | sed -e "s/.jpg'/.jpg/g" >> $qty 2> /dev/null
+		cat "$pics_dir/$i" | tr ',' '\n' | grep -i "affichages\|fave_count\|comment_count\|baseurl: " | head -n 4 | sort -r | sed -e "s/\"fave_count\":\|\"comment_count\":\|\t.baseURL: //g" | cut -c 2- | rev | cut -c 2- | rev | sed -e "s/Affichage\|\t//g" | sed -e "s/.jpg'/.jpg/g" >> $qty 2> /dev/null
 	done 2> /dev/null
 
-	cat $qty | sed -n '1~5p' > $nqty;
-	cat $qty | sed -n '2~5p' > $fqty;
-	cat $qty | sed -n '3~5p' > $cqty;
-	cat $qty | sed -n '4~5p' > $lqty;
-	cat $qty | sed -n '5~5p' | sed -e "s/ //g" > $vqty;
+	cat $qty | sed -n '1~6p' > $pcln;
+	cat $qty | sed -n '2~6p' > $nqty;
+	cat $qty | sed -n '3~6p' > $fqty;
+	cat $qty | sed -n '4~6p' > $cqty;
+	cat $qty | sed -n '5~6p' > $lqty;
+	cat $qty | sed -n '6~6p' | sed -e "s/ //g" > $vqty;
 	printf "\r\033[K\033[92m100";
 	echo -n "%";
 	printf "\033[0m -> \033[92mPictures analyzed !\033[0m\n\n";
-	printf "Total views: \033[96m$(echo `cat $vqty | tr '\n' '+' | rev | cut -c 2- | rev` | bc)\033[0m\nTotal favs:  \033[96m$(echo `cat $fqty | tr '\n' '+' | rev | cut -c 2- | rev` | bc)\033[0m\nTotal coms:  \033[96m$(echo `cat $cqty | tr '\n' '+' | rev | cut -c 2- | rev` | bc)\033[0m\n\n" > $fstat;
 
 	mostv=$(cat $vqty | grep -nx `cat $vqty | sort -hr | head -n 1`);
 	mostvname=$(cat $nqty | head -n `printf $mostv | cut -d ':' -f1` | tail -n 1);
 	mostvlink=$(cat $lqty | head -n `printf $mostv | cut -d ':' -f1` | tail -n 1);
+	mostvln=$(cat $pcln | head -n `printf $mostv | cut -d ':' -f1` | tail -n 1);
 	mostf=$(cat $fqty | grep -nx `cat $fqty | sort -hr | head -n 1`);
 	mostfname=$(cat $nqty | head -n `printf $mostf | cut -d ':' -f1` | tail -n 1);
 	mostflink=$(cat $lqty | head -n `printf $mostf | cut -d ':' -f1` | tail -n 1);
+	mostfln=$(cat $pcln | head -n `printf $mostf | cut -d ':' -f1` | tail -n 1);
 	mostc=$(cat $cqty | grep -nx `cat $cqty | sort -hr | head -n 1`);
 	mostcname=$(cat $nqty | head -n `printf $mostc | cut -d ':' -f1` | tail -n 1);
 	mostclink=$(cat $lqty | head -n `printf $mostc | cut -d ':' -f1` | tail -n 1);
+	mostcln=$(cat $pcln | head -n `printf $mostc | cut -d ':' -f1` | tail -n 1);
 
-	printf "_@__:MVP:__@_${mostvname}_@__:about:__@_`printf $mostv | cut -d ':' -f2`_@__:views:__@_$(curl -s http://is.gd/api.php?longurl=$mostvlink)_@__:EOL:__@_\n_@__:MFP:__@_${mostfname}_@__:about:__@_`printf $mostf | cut -d ':' -f2`_@__:favs:__@_$(curl -s http://is.gd/api.php?longurl=$mostflink)_@__:EOL:__@_\n_@__:MCP:__@_${mostcname}_@__:about:__@_`printf $mostc | cut -d ':' -f2`_@__:coms:__@_$(curl -s http://is.gd/api.php?longurl=$mostclink)_@__:EOL:__@_\n" >> $fstat;
+	mostv_i=$(printf $mostv | cut -d ':' -f2);
+	mostf_i=$(printf $mostf | cut -d ':' -f2);
+	mostc_i=$(printf $mostc | cut -d ':' -f2);
 
-	cat $fstat | awk '{gsub("_@__:MVP:__@_","\033[0mMost viewed pic: \"\033[93m")}1' | awk '{gsub("_@__:MFP:__@_", "\033[0mMost faved pic:  \"\033[93m")}1' | awk '{gsub("_@__:MCP:__@_", "\033[0mMost commented:  \"\033[93m")}1' | awk '{gsub("_@__:about:__@_", "\033[0m\" -> \033[96m")}1' | awk '{gsub("_@__:views:__@_", "\033[0m views (\033[94m")}1' | awk '{gsub("_@__:favs:__@_", "\033[0m favs (\033[94m")}1' | awk '{gsub("_@__:coms:__@_", "\033[0m coms (\033[94m")}1' | awk '{gsub("_@__:EOL:__@_", "\033[0m)")}1' ;
+	printf "_@:IDN:@_${idnam}_@:EOL:@__@:IDP:@_${idpic}_@:EOL:@__@:PRO:@_${ispro}_@:EOL:@_\n" > $fstat;
+
+	printf "_@:TTV:@_$(echo `cat $vqty | tr '\n' '+' | rev | cut -c 2- | rev` | bc)_@:EOL:@__@:TTF:@_$(echo `cat $fqty | tr '\n' '+' | rev | cut -c 2- | rev` | bc)_@:EOL:@__@:TTC:@_$(echo `cat $cqty | tr '\n' '+' | rev | cut -c 2- | rev` | bc)_@:EOL:@_\n" >> $fstat;
+
+	printf "_@:MVP:@_${mostvname}_@:nfo:@_${mostv_i}_@:vew:@_${mostvlink}_@:RLN:@_${mostvln}_@:EOL:@__@:MFP:@_${mostfname}_@:nfo:@_${mostf_i}_@:fav:@_${mostflink}_@:RLN:@_${mostfln}_@:EOL:@__@:MCP:@_${mostcname}_@:nfo:@_${mostc_i}_@:com:@_${mostclink}_@:RLN:@_${mostcln}_@:EOF:@_" >> $fstat;
+
+
+	csv_fdatas="/tmp/.flickr_datas_${f_user}.csv";
+	displayer="/media/Datas/perso_progs/bash/statr/displayer";
+	html_out="/tmp/.fstat_${f_user}.html";
+
+	cat $fstat > $csv_fdatas;
+	$displayer/conv $csv_fdatas;
+
+	$displayer/2html $csv_fdatas > $html_out;
+	firefox $html_out & 2> /dev/null;
+
 	rm -rf $fstat $pics_dir $pcheck $tmpf $tlist $qty $vqty $fqty $cqty $nqty $lqty 2> /dev/null;
 }
 
